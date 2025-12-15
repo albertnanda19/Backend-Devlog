@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Inject, Post, Body } from '@nestjs/common';
 import { AuthService } from '../../../application/services/auth.service';
 import { RegisterRequestDto } from './dto/register.dto';
+import { LoginRequestDto } from './dto/login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -25,6 +26,20 @@ export class AuthController {
     return {
       success: true,
       message: 'Registrasi berhasil.',
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    };
+  }
+
+  @Post('login')
+  async login(@Body() body: LoginRequestDto) {
+    const { accessToken, refreshToken } = await this.authService.login(
+      body.email,
+      body.password,
+    );
+    return {
+      success: true,
+      message: 'Login berhasil.',
       access_token: accessToken,
       refresh_token: refreshToken,
     };
