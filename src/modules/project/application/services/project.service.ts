@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { CreateProjectDto } from '../../infrastructure/adapters/http/dto/create-project.dto';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { GetProjectsQueryDto } from '../../infrastructure/adapters/http/dto/get-projects-query.dto';
 
 @Injectable()
 export class ProjectService {
@@ -32,6 +33,42 @@ export class ProjectService {
 			status,
 		});
 		return created;
+	}
+
+	async listProjects(userId: string, query: GetProjectsQueryDto) {
+		const page = query.page ?? 1;
+		const limit = query.limit ?? 10;
+		const status = query.status ?? 'ACTIVE';
+		const sortBy = query.sortBy ?? 'createdAt';
+		const order = (query.order ?? 'desc') as 'asc' | 'desc';
+		const search = query.search?.trim() || undefined;
+
+		const sortMap: Record<string, string> = {
+			createdAt: 'created_at',
+			title: 'title',
+			status: 'status',
+		};
+		const sort_col = sortMap[sortBy] ?? 'created_at';
+
+		const { items, total } = await this.repo.listProjects({
+			user_id: userId,
+			status,
+			search,
+			sort_by: sort_col,
+			order,
+			page,
+			limit,
+		});
+
+		return {
+			items,
+			meta: {
+				page,
+				limit,
+				totalItems: total,
+				totalPages: Math.ceil((total ?? 0) / limit),
+			},
+		};
 	}
 }
 

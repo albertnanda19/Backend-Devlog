@@ -1,7 +1,8 @@
-import { Body, Controller, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { ProjectService } from '../../../application/services/project.service';
+import { GetProjectsQueryDto } from './dto/get-projects-query.dto';
 
 @Controller('projects')
 export class ProjectController {
@@ -15,7 +16,7 @@ export class ProjectController {
 		const project = await this.projectService.createProject(auth.id, body);
 		return {
 			success: true,
-			message: 'Project created successfully',
+			message: 'Berhasil membuat project',
 			data: {
 				id: project.id,
 				title: project.title,
@@ -24,6 +25,25 @@ export class ProjectController {
 				status: project.status,
 				createdAt: project.created_at,
 			},
+		};
+	}
+
+	@Get()
+	async list(@Req() req: Request, @Query() query: GetProjectsQueryDto) {
+		const auth = (req as any).user as { id: string };
+		const result = await this.projectService.listProjects(auth.id, query);
+		return {
+			success: true,
+			message: 'Berhasil mengambil project',
+			data: result.items.map((p: any) => ({
+				id: p.id,
+				title: p.title,
+				description: p.description ?? null,
+				techStack: p.tech_stack ?? null,
+				status: p.status,
+				createdAt: p.created_at,
+			})),
+			meta: result.meta,
 		};
 	}
 }
