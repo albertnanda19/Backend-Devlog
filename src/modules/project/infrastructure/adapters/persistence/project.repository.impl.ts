@@ -40,6 +40,53 @@ export class ProjectRepositoryImpl {
 		};
 	}
 
+	async getByIdForUser(user_id: string, project_id: string) {
+		const { data, error } = await this.supabase
+			.from('projects')
+			.select('id,user_id,title,description,tech_stack,status,created_at,updated_at,deleted_at')
+			.eq('id', project_id)
+			.eq('user_id', user_id)
+			.is('deleted_at', null)
+			.maybeSingle();
+		if (error) {
+			throw new InternalServerErrorException(`Gagal mengambil project: ${error.message}`);
+		}
+		return data as any | null;
+	}
+
+	async updateProject(project_id: string, user_id: string, updates: {
+		title?: string;
+		description?: string | null;
+		tech_stack?: string | null;
+		status?: 'ACTIVE' | 'ARCHIVED';
+	}) {
+		const payload: Record<string, unknown> = {};
+		if (typeof updates.title !== 'undefined') payload.title = updates.title;
+		if (typeof updates.description !== 'undefined') payload.description = updates.description;
+		if (typeof updates.tech_stack !== 'undefined') payload.tech_stack = updates.tech_stack;
+		if (typeof updates.status !== 'undefined') payload.status = updates.status;
+
+		const { data, error } = await this.supabase
+			.from('projects')
+			.update(payload)
+			.eq('id', project_id)
+			.eq('user_id', user_id)
+			.is('deleted_at', null)
+			.select('id,title,description,tech_stack,status,updated_at')
+			.single();
+		if (error) {
+			throw new InternalServerErrorException(`Gagal memperbarui project: ${error.message}`);
+		}
+		return data as {
+			id: string;
+			title: string;
+			description: string | null;
+			tech_stack: string | null;
+			status: 'ACTIVE' | 'ARCHIVED';
+			updated_at: string;
+		};
+	}
+
 	async listProjects(params: {
 		user_id: string;
 		status?: 'ACTIVE' | 'ARCHIVED';

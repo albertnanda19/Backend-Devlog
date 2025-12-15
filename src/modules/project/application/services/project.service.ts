@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { CreateProjectDto } from '../../infrastructure/adapters/http/dto/create-project.dto';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { GetProjectsQueryDto } from '../../infrastructure/adapters/http/dto/get-projects-query.dto';
+import { UpdateProjectDto } from '../../infrastructure/adapters/http/dto/update-project.dto';
 
 @Injectable()
 export class ProjectService {
@@ -69,6 +70,46 @@ export class ProjectService {
 				totalPages: Math.ceil((total ?? 0) / limit),
 			},
 		};
+	}
+
+	async updateProject(userId: string, projectId: string, dto: UpdateProjectDto) {
+		// Verify user active
+		const { data: user, error: userErr } = await this.supabase
+			.from('users')
+			.select('id,is_active')
+			.eq('id', userId)
+			.maybeSingle();
+		if (userErr) {
+			throw new BadRequestException(`Gagal memverifikasi pengguna: ${userErr.message}`);
+		}
+		if (!user || (user as any).is_active === false) {
+			throw new BadRequestException('Akun Anda tidak aktif');
+		}
+
+		// Ensure at least one field provided
+		const provided =
+			typeof dto.title !== 'undefined' ||
+			typeof dto.description !== 'undefined' ||
+			typeof dto.techStack !== 'undefined' ||
+			typeof dto.status !== 'undefined';
+		if (!provided) {
+			throw new BadRequestException('Minimal satu field harus dikirim');
+		}
+
+		// Ensure project exists and belongs to user and not soft-deleted
+		const existing = await this.repo.getByIdForUser(userId, projectId);
+		if (!existing) {
+			throw new BadRequestException('Project tidak ditemukan atau tidak dapat diakses');
+		}
+
+		const updated = await this.repo.updateProject(projectId, userId, {
+			title: dto.title,
+			description: typeof dto.description !== 'undefined' ? dto.description : undefined,
+			tech_stack: typeof dto.techStack !== 'undefined' ? dto.techStack : undefined,
+			status: dto.status,
+		});
+
+		return updated;
 	}
 }
 
