@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put, Query, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { ProjectService } from '../../../application/services/project.service';
@@ -85,6 +85,19 @@ export class ProjectController {
 			data: worklogs
 				? { ...rest, worklogs }
 				: rest,
+		};
+	}
+
+	@Delete(':id')
+	async remove(
+		@Req() req: Request,
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	) {
+		const auth = (req as any).user as { id: string };
+		await this.projectService.deleteProject(auth.id, id);
+		return {
+			success: true,
+			message: 'Berhasil menghapus project',
 		};
 	}
 }

@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './modules/auth/auth.module';
 import { SupabaseModule } from './infrastructure/supabase.module';
 import { ProjectModule } from './modules/project/project.module';
+import { AuditLoggerModule } from './infrastructure/logger/audit-logger.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ProjectModule } from './modules/project/project.module';
       })(),
     }),
     SupabaseModule,
+    AuditLoggerModule,
     AuthModule,
     ProjectModule,
   ],

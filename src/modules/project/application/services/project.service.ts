@@ -4,12 +4,14 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { GetProjectsQueryDto } from '../../infrastructure/adapters/http/dto/get-projects-query.dto';
 import { UpdateProjectDto } from '../../infrastructure/adapters/http/dto/update-project.dto';
 import { GetProjectDetailQueryDto } from '../../infrastructure/adapters/http/dto/get-project-detail-query.dto';
+import { AuditLoggerService } from '../../../../infrastructure/logger/audit-logger.service';
 
 @Injectable()
 export class ProjectService {
 	constructor(
 		@Inject('SUPABASE_CLIENT') private readonly supabase: SupabaseClient,
 		@Inject('ProjectRepositoryToken') private readonly repo: any,
+		private readonly auditLogger: AuditLoggerService,
 	) {}
 
 	async createProject(userId: string, dto: CreateProjectDto) {
@@ -146,6 +148,38 @@ export class ProjectService {
 			updatedAt: project.updated_at ?? null,
 			worklogs,
 		};
+	}
+
+	async deleteProject(userId: string, projectId: string) {
+		// verify user active
+		const { data: user, error: userErr } = await this.supabase
+			.from('users')
+			.select('id,is_active')
+			.eq('id', userId)
+			.maybeSingle();
+		if (userErr) {
+		 throw new BadRequestException(`Gagal memverifikasi pengguna: ${userErr.message}`);
+		}
+		if (!user || (user as any).is_active === false) {
+			throw new BadRequestException('Akun Anda tidak aktif');
+		}
+
+		// ensure project exists and is not deleted and belongs to user
+		const existing = await this.repo.getByIdForUser(userId, projectId);
+		if (!existing) {
+			throw new BadRequestException('Project tidak ditemukan atau tidak dapat diakses');
+		}
+
+		// soft delete
+		await this.repo.softDeleteProject(projectId, userId);
+
+		// audit log
+		await this.auditLogger.log({
+			userId,
+			action: 'DELETE_PROJECT',
+			entityType: 'project',
+			entityId: projectId,
+		});
 	}
 }
 

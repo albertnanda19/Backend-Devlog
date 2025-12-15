@@ -107,6 +107,21 @@ export class ProjectRepositoryImpl {
 		}>;
 	}
 
+	async softDeleteProject(project_id: string, user_id: string) {
+		const { data, error } = await this.supabase
+			.from('projects')
+			.update({ deleted_at: new Date().toISOString() })
+			.eq('id', project_id)
+			.eq('user_id', user_id)
+			.is('deleted_at', null)
+			.select('id,deleted_at')
+			.single();
+		if (error) {
+			throw new InternalServerErrorException(`Gagal menghapus project: ${error.message}`);
+		}
+		return data as { id: string; deleted_at: string };
+	}
+
 	async listProjects(params: {
 		user_id: string;
 		status?: 'ACTIVE' | 'ARCHIVED';
