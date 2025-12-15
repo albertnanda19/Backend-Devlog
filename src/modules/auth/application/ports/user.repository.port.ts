@@ -20,6 +20,8 @@ export abstract class UserRepositoryPort {
 	abstract findByEmail(email: string): Promise<UserRecord | null>;
 	abstract createUser(data: CreateUserInput): Promise<UserRecord>;
 	abstract getDefaultRoleId(): Promise<string>;
+	abstract getById(id: string): Promise<UserRecord | null>;
+	abstract updateFullName(id: string, full_name: string): Promise<UserRecord>;
 }
 
 

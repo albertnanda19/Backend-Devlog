@@ -82,6 +82,17 @@ export class AuthService {
     } as any);
     return { accessToken, refreshToken };
   }
+
+  async updateMe(userId: string, full_name: string) {
+    const user = await this.userRepo.getById(userId);
+    if (!user) {
+      throw new BadRequestException('Pengguna tidak ditemukan');
+    }
+    if (user.is_active === false) {
+      throw new BadRequestException('Akun Anda tidak aktif');
+    }
+    await this.userRepo.updateFullName(userId, full_name);
+  }
 }
 
 

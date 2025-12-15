@@ -102,4 +102,29 @@ export class AuthRepositoryImpl implements AuthRepository, UserRepositoryPort {
 		}
 		return created.id as string;
 	}
+
+	async getById(id: string): Promise<UserRecord | null> {
+		const { data, error } = await this.supabase
+			.from('users')
+			.select('id,email,password_hash,role_id,full_name,is_active,created_at,updated_at')
+			.eq('id', id)
+			.maybeSingle();
+		if (error) {
+			throw new InternalServerErrorException(`Gagal mengambil pengguna: ${error.message}`);
+		}
+		return (data as UserRecord) ?? null;
+	}
+
+	async updateFullName(id: string, full_name: string): Promise<UserRecord> {
+		const { data, error } = await this.supabase
+			.from('users')
+			.update({ full_name })
+			.eq('id', id)
+			.select('id,email,password_hash,role_id,full_name,is_active,created_at,updated_at')
+			.single();
+		if (error) {
+			throw new InternalServerErrorException(`Gagal memperbarui profil: ${error.message}`);
+		}
+		return data as UserRecord;
+	}
 }

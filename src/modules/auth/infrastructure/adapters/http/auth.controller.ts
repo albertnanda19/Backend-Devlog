@@ -1,9 +1,10 @@
-import { Controller, Get, Param, Inject, Post, Body, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Param, Inject, Post, Body, ParseUUIDPipe, Put } from '@nestjs/common';
 import { AuthService } from '../../../application/services/auth.service';
 import { RegisterRequestDto } from './dto/register.dto';
 import { LoginRequestDto } from './dto/login.dto';
 import { Req } from '@nestjs/common';
 import type { Request } from 'express';
+import { UpdateMeDto } from './dto/update-me.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -47,6 +48,27 @@ export class AuthController {
     const profile = await this.repo.findById(auth.id);
     return {
       success: true,
+      data: {
+        id: profile?.id,
+        email: profile?.email,
+        fullName: profile?.full_name ?? null,
+        role: profile?.roles
+          ? { id: profile.roles.id ?? null, name: profile.roles.name ?? null }
+          : null,
+        isActive: profile?.is_active ?? null,
+        createdAt: profile?.created_at ?? null,
+      },
+    };
+  }
+
+  @Put('me')
+  async updateMe(@Req() req: Request, @Body() body: UpdateMeDto) {
+    const auth = (req as any).user as { id: string };
+    await this.authService.updateMe(auth.id, body.full_name);
+    const profile = await this.repo.findById(auth.id);
+    return {
+      success: true,
+      message: 'Profil berhasil diperbarui.',
       data: {
         id: profile?.id,
         email: profile?.email,
