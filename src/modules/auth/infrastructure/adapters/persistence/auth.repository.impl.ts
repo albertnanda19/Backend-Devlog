@@ -1,4 +1,4 @@
-import { Injectable, Inject, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, Inject, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { AuthRepository } from '../../../domain/repositories/auth.repository';
 import { UserRepositoryPort, CreateUserInput, UserRecord } from '../../../application/ports/user.repository.port';
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -10,15 +10,43 @@ export class AuthRepositoryImpl implements AuthRepository, UserRepositoryPort {
 	) {}
 
 	async findById(id: string): Promise<any> {
-		const { data, error } = await this.supabase
+		// Ambil data user tanpa join agar stabil pada Supabase (relasi bisa tidak terdaftar)
+		const { data: user, error: userErr } = await this.supabase
 			.from('users')
-			.select('id,email,full_name,created_at')
+			.select('id,email,full_name,is_active,created_at,role_id')
 			.eq('id', id)
 			.maybeSingle();
-		if (error) {
-			throw new InternalServerErrorException('Gagal mengambil data pengguna');
+		if (userErr) {
+			throw new InternalServerErrorException(`Gagal mengambil data pengguna: ${userErr.message}`);
 		}
-		return data ?? null;
+		if (!user) {
+			throw new NotFoundException('Pengguna tidak ditemukan');
+		}
+
+		// Ambil data role jika tersedia
+		let role: { id: string; name: string } | null = null;
+		if ((user as any).role_id) {
+			const { data: roleRow, error: roleErr } = await this.supabase
+				.from('roles')
+				.select('id,name')
+				.eq('id', (user as any).role_id)
+				.maybeSingle();
+			if (roleErr) {
+				throw new InternalServerErrorException(`Gagal mengambil data peran pengguna: ${roleErr.message}`);
+			}
+			if (roleRow) {
+				role = { id: (roleRow as any).id, name: (roleRow as any).name };
+			}
+		}
+
+		return {
+			id: (user as any).id,
+			email: (user as any).email,
+			full_name: (user as any).full_name ?? null,
+			is_active: (user as any).is_active ?? null,
+			created_at: (user as any).created_at ?? null,
+			roles: role,
+		};
 	}
 
 	async findByEmail(email: string): Promise<UserRecord | null> {
