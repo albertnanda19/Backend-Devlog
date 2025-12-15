@@ -1,6 +1,18 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create Users Table
+CREATE TABLE public.roles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO public.roles (name, description) VALUES
+('USER', 'Default application user'),
+('ADMIN', 'System administrator');
+
 CREATE TABLE public.users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
@@ -8,14 +20,18 @@ CREATE TABLE public.users (
     password_hash TEXT NOT NULL,
     full_name VARCHAR(100),
 
-    role VARCHAR(20) NOT NULL DEFAULT 'USER',
+    role_id UUID NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT true,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_users_role
+        FOREIGN KEY (role_id)
+        REFERENCES public.roles(id)
 );
 
-CREATE INDEX idx_users_role ON public.users(role);
+CREATE INDEX idx_users_role_id ON public.users(role_id);
 
 CREATE TABLE public.projects (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
