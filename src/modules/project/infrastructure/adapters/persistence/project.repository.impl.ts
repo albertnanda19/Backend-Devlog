@@ -122,6 +122,98 @@ export class ProjectRepositoryImpl {
 		return data as { id: string; deleted_at: string };
 	}
 
+	async existsWorklogOnDate(project_id: string, log_date: string): Promise<boolean> {
+		const { data, error } = await this.supabase
+			.from('worklogs')
+			.select('id')
+			.eq('project_id', project_id)
+			.eq('log_date', log_date)
+			.is('deleted_at', null)
+			.maybeSingle();
+		if (error && error.code !== 'PGRST116') {
+			// PGRST116: No rows found for maybeSingle
+			throw new InternalServerErrorException(`Gagal memeriksa worklog: ${error.message}`);
+		}
+		return !!data;
+	}
+
+	async createWorklog(input: {
+		project_id: string;
+		log_date: string;
+		activity_type: string;
+		summary: string;
+		time_spent?: number | null;
+		blockers?: string | null;
+	}) {
+		const { data, error } = await this.supabase
+			.from('worklogs')
+			.insert({
+				project_id: input.project_id,
+				log_date: input.log_date,
+				activity_type: input.activity_type,
+				summary: input.summary,
+				time_spent: typeof input.time_spent === 'number' ? input.time_spent : null,
+				blockers: input.blockers ?? null,
+			})
+			.select('id,log_date,activity_type,summary,time_spent,blockers,created_at')
+			.single();
+		if (error) {
+			throw new InternalServerErrorException(`Gagal membuat worklog: ${error.message}`);
+		}
+		return data as {
+			id: string;
+			log_date: string;
+			activity_type: string;
+			summary: string;
+			time_spent: number | null;
+			blockers: string | null;
+			created_at: string;
+		};
+	}
+
+	async listWorklogs(params: {
+		project_id: string;
+		page: number;
+		limit: number;
+		from_date?: string;
+		to_date?: string;
+		sort: 'asc' | 'desc';
+	}): Promise<{ items: Array<{
+		id: string;
+		log_date: string;
+		activity_type: string;
+		summary: string;
+		time_spent: number | null;
+		blockers: string | null;
+		created_at: string;
+	}>; total: number; }> {
+		let query = this.supabase
+			.from('worklogs')
+			.select('id,log_date,activity_type,summary,time_spent,blockers,created_at', { count: 'exact' })
+			.eq('project_id', params.project_id)
+			.is('deleted_at', null);
+
+		if (params.from_date) {
+			query = query.gte('log_date', params.from_date);
+		}
+		if (params.to_date) {
+			query = query.lte('log_date', params.to_date);
+		}
+
+		query = query.order('log_date', { ascending: params.sort === 'asc' });
+
+		const from = (params.page - 1) * params.limit;
+		const to = from + params.limit - 1;
+		const { data, error, count } = await query.range(from, to);
+		if (error) {
+			throw new InternalServerErrorException(`Gagal mengambil daftar worklog: ${error.message}`);
+		}
+		return {
+			items: (data ?? []) as any,
+			total: count ?? 0,
+		};
+	}
+
 	async listProjects(params: {
 		user_id: string;
 		status?: 'ACTIVE' | 'ARCHIVED';

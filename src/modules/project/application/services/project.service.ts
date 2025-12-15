@@ -5,6 +5,8 @@ import { GetProjectsQueryDto } from '../../infrastructure/adapters/http/dto/get-
 import { UpdateProjectDto } from '../../infrastructure/adapters/http/dto/update-project.dto';
 import { GetProjectDetailQueryDto } from '../../infrastructure/adapters/http/dto/get-project-detail-query.dto';
 import { AuditLoggerService } from '../../../../infrastructure/logger/audit-logger.service';
+import { CreateWorklogDto } from '../../infrastructure/adapters/http/dto/create-worklog.dto';
+import { GetWorklogsQueryDto } from '../../infrastructure/adapters/http/dto/get-worklogs-query.dto';
 
 @Injectable()
 export class ProjectService {
@@ -180,6 +182,106 @@ export class ProjectService {
 			entityType: 'project',
 			entityId: projectId,
 		});
+	}
+
+	async createWorklog(userId: string, projectId: string, dto: CreateWorklogDto) {
+		// verify user active
+		const { data: user, error: userErr } = await this.supabase
+			.from('users')
+			.select('id,is_active')
+			.eq('id', userId)
+			.maybeSingle();
+		if (userErr) {
+			throw new BadRequestException(`Gagal memverifikasi pengguna: ${userErr.message}`);
+		}
+		if (!user || (user as any).is_active === false) {
+			throw new BadRequestException('Akun Anda tidak aktif');
+		}
+
+		// ensure project exists and belongs to user and not soft-deleted
+		const project = await this.repo.getByIdForUser(userId, projectId);
+		if (!project) {
+			throw new BadRequestException('Project tidak ditemukan atau tidak dapat diakses');
+		}
+
+		// validate logDate <= today
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		const inputDate = new Date(dto.logDate + 'T00:00:00.000Z');
+		if (isNaN(inputDate.getTime())) {
+			throw new BadRequestException('Format tanggal tidak valid.');
+		}
+		if (inputDate.getTime() > today.getTime()) {
+			throw new BadRequestException('Tanggal worklog tidak boleh melebihi hari ini.');
+		}
+
+		// ensure no duplicate on same date
+		const exists = await this.repo.existsWorklogOnDate(projectId, dto.logDate);
+		if (exists) {
+			throw new BadRequestException('Worklog untuk tanggal tersebut sudah ada.');
+		}
+
+		// create worklog
+		const created = await this.repo.createWorklog({
+			project_id: projectId,
+			log_date: dto.logDate,
+			activity_type: dto.activityType,
+			summary: dto.summary,
+			time_spent: typeof dto.timeSpent === 'number' ? dto.timeSpent : undefined,
+			blockers: typeof dto.blockers === 'string' ? dto.blockers : undefined,
+		});
+
+		// audit log
+		await this.auditLogger.log({
+			userId,
+			action: 'CREATE_WORKLOG',
+			entityType: 'worklog',
+			entityId: created.id,
+		});
+
+		return created;
+	}
+
+	async listWorklogs(userId: string, projectId: string, query: GetWorklogsQueryDto) {
+		// Ownership check
+		const project = await this.repo.getByIdForUser(userId, projectId);
+		if (!project) {
+			throw new BadRequestException('Project tidak ditemukan atau tidak dapat diakses');
+		}
+
+		// Validate date range if provided
+		const fromDate = query.fromDate;
+		const toDate = query.toDate;
+		if (fromDate && toDate) {
+			const from = new Date(fromDate + 'T00:00:00.000Z');
+			const to = new Date(toDate + 'T00:00:00.000Z');
+			if (isNaN(from.getTime()) || isNaN(to.getTime()) || from.getTime() > to.getTime()) {
+				throw new BadRequestException('Rentang tanggal tidak valid (fromDate harus ≤ toDate).');
+			}
+		}
+
+		const page = query.page ?? 1;
+		const limit = query.limit ?? 10;
+		const sort = (query.sort ?? 'desc') as 'asc' | 'desc';
+
+		const { items, total } = await this.repo.listWorklogs({
+			project_id: projectId,
+			page,
+			limit,
+			from_date: fromDate,
+			to_date: toDate,
+			sort,
+		});
+
+		return {
+			items,
+			meta: {
+				page,
+				limit,
+				totalItems: total,
+				totalPages: Math.ceil((total ?? 0) / limit),
+			},
+		};
 	}
 }
 

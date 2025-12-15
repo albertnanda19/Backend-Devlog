@@ -5,6 +5,8 @@ import { ProjectService } from '../../../application/services/project.service';
 import { GetProjectsQueryDto } from './dto/get-projects-query.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { GetProjectDetailQueryDto } from './dto/get-project-detail-query.dto';
+import { CreateWorklogDto } from './dto/create-worklog.dto';
+import { GetWorklogsQueryDto } from './dto/get-worklogs-query.dto';
 
 @Controller('projects')
 export class ProjectController {
@@ -98,6 +100,52 @@ export class ProjectController {
 		return {
 			success: true,
 			message: 'Berhasil menghapus project',
+		};
+	}
+
+	@Post(':projectId/worklogs')
+	async createWorklog(
+		@Req() req: Request,
+		@Param('projectId', new ParseUUIDPipe({ version: '4' })) projectId: string,
+		@Body() body: CreateWorklogDto,
+	) {
+		const auth = (req as any).user as { id: string };
+		const wl = await this.projectService.createWorklog(auth.id, projectId, body);
+		return {
+			success: true,
+			message: 'Worklog created successfully',
+			data: {
+				id: wl.id,
+				logDate: wl.log_date,
+				activityType: wl.activity_type,
+				summary: wl.summary,
+				timeSpent: wl.time_spent,
+				blockers: wl.blockers,
+				createdAt: wl.created_at,
+			},
+		};
+	}
+
+	@Get(':projectId/worklogs')
+	async listWorklogs(
+		@Req() req: Request,
+		@Param('projectId', new ParseUUIDPipe({ version: '4' })) projectId: string,
+		@Query() query: GetWorklogsQueryDto,
+	) {
+		const auth = (req as any).user as { id: string };
+		const result = await this.projectService.listWorklogs(auth.id, projectId, query);
+		return {
+			success: true,
+			data: result.items.map((w: any) => ({
+				id: w.id,
+				logDate: w.log_date,
+				activityType: w.activity_type,
+				summary: w.summary,
+				timeSpent: w.time_spent,
+				blockers: w.blockers,
+				createdAt: w.created_at,
+			})),
+			meta: result.meta,
 		};
 	}
 }
