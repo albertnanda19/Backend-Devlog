@@ -4,6 +4,7 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { ProjectService } from '../../../application/services/project.service';
 import { GetProjectsQueryDto } from './dto/get-projects-query.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
+import { GetProjectDetailQueryDto } from './dto/get-project-detail-query.dto';
 
 @Controller('projects')
 export class ProjectController {
@@ -67,6 +68,23 @@ export class ProjectController {
 				status: updated.status,
 				updatedAt: updated.updated_at,
 			},
+		};
+	}
+
+	@Get(':id')
+	async getOne(
+		@Req() req: Request,
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Query() query: GetProjectDetailQueryDto,
+	) {
+		const auth = (req as any).user as { id: string };
+		const detail = await this.projectService.getProjectDetail(auth.id, id, query);
+		const { worklogs, ...rest } = detail;
+		return {
+			success: true,
+			data: worklogs
+				? { ...rest, worklogs }
+				: rest,
 		};
 	}
 }

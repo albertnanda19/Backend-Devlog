@@ -87,6 +87,26 @@ export class ProjectRepositoryImpl {
 		};
 	}
 
+	async getWorklogsForProject(project_id: string, limit: number, order: 'asc' | 'desc') {
+		const { data, error } = await this.supabase
+			.from('worklogs')
+			.select('id,log_date,activity_type,summary,time_spent')
+			.eq('project_id', project_id)
+			.is('deleted_at', null)
+			.order('log_date', { ascending: order === 'asc' })
+			.limit(limit);
+		if (error) {
+			throw new InternalServerErrorException(`Gagal mengambil worklogs: ${error.message}`);
+		}
+		return (data ?? []) as Array<{
+			id: string;
+			log_date: string;
+			activity_type: string;
+			summary: string;
+			time_spent: number | null;
+		}>;
+	}
+
 	async listProjects(params: {
 		user_id: string;
 		status?: 'ACTIVE' | 'ARCHIVED';
