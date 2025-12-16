@@ -8,6 +8,7 @@ import { AuditLoggerService } from '../../../../infrastructure/logger/audit-logg
 import { CreateWorklogDto } from '../../infrastructure/adapters/http/dto/create-worklog.dto';
 import { GetWorklogsQueryDto } from '../../infrastructure/adapters/http/dto/get-worklogs-query.dto';
 import { UpdateWorklogDto } from '../../infrastructure/adapters/http/dto/update-worklog.dto';
+import { GetAdminProjectsQueryDto } from '../../infrastructure/adapters/http/dto/get-admin-projects-query.dto';
 
 @Injectable()
 export class ProjectService {
@@ -40,6 +41,52 @@ export class ProjectService {
 			status,
 		});
 		return created;
+	}
+
+	async adminListProjects(query: GetAdminProjectsQueryDto) {
+		const page = query.page ?? 1;
+		const limit = query.limit ?? 20;
+		const sort = (query.sort ?? 'desc') as 'asc' | 'desc';
+
+		const { items, total } = await this.repo.adminListProjects({
+			page,
+			limit,
+			user_id: query.userId,
+			status: query.status,
+			search: query.search?.trim() || undefined,
+			include_deleted: query.includeDeleted ?? false,
+			sort,
+		});
+
+		const userIds = Array.from(new Set(items.map((p: any) => p.user_id)));
+		let userMap: Record<string, string> = {};
+		if (userIds.length > 0) {
+			const users = await this.repo.getUsersByIds(userIds);
+			userMap = users.reduce((acc: any, u: any) => {
+				acc[u.id] = u.email;
+				return acc;
+			}, {});
+		}
+
+		return {
+			items: items.map((p: any) => ({
+				id: p.id,
+				title: p.title,
+				status: p.status,
+				techStack: p.tech_stack ?? null,
+				owner: {
+					id: p.user_id,
+					email: userMap[p.user_id] ?? null,
+				},
+				createdAt: p.created_at,
+			})),
+			meta: {
+				page,
+				limit,
+				totalItems: total,
+				totalPages: Math.ceil((total ?? 0) / limit),
+			},
+		};
 	}
 
 	async listProjects(userId: string, query: GetProjectsQueryDto) {

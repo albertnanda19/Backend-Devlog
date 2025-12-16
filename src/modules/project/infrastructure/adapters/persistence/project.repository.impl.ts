@@ -40,6 +40,63 @@ export class ProjectRepositoryImpl {
 		};
 	}
 
+	async adminListProjects(params: {
+		page: number;
+		limit: number;
+		user_id?: string;
+		status?: 'ACTIVE' | 'ARCHIVED';
+		search?: string;
+		include_deleted?: boolean;
+		sort: 'asc' | 'desc';
+	}): Promise<{ items: Array<{
+		id: string;
+		title: string;
+		status: 'ACTIVE' | 'ARCHIVED';
+		tech_stack: string | null;
+		user_id: string;
+		created_at: string;
+	}>; total: number; }> {
+		let query = this.supabase
+			.from('projects')
+			.select('id,title,status,tech_stack,user_id,created_at', { count: 'exact' });
+
+		if (!params.include_deleted) {
+			query = query.is('deleted_at', null);
+		}
+		if (params.user_id) {
+			query = query.eq('user_id', params.user_id);
+		}
+		if (params.status) {
+			query = query.eq('status', params.status);
+		}
+		if (params.search) {
+			query = query.ilike('title', `%${params.search}%`);
+		}
+
+		query = query.order('created_at', { ascending: params.sort === 'asc' });
+
+		const from = (params.page - 1) * params.limit;
+		const to = from + params.limit - 1;
+		const { data, error, count } = await query.range(from, to);
+		if (error) {
+			throw new InternalServerErrorException(`Gagal mengambil daftar project: ${error.message}`);
+		}
+		return {
+			items: (data ?? []) as any,
+			total: count ?? 0,
+		};
+	}
+
+	async getUsersByIds(userIds: string[]) {
+		const { data, error } = await this.supabase
+			.from('users')
+			.select('id,email')
+			.in('id', userIds);
+		if (error) {
+			throw new InternalServerErrorException(`Gagal mengambil data pengguna: ${error.message}`);
+		}
+		return (data ?? []) as Array<{ id: string; email: string }>;
+	}
 	async getByIdForUser(user_id: string, project_id: string) {
 		const { data, error } = await this.supabase
 			.from('projects')
