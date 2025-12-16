@@ -362,6 +362,44 @@ export class ProjectService {
 
 		return updated;
 	}
+
+	async deleteWorklog(userId: string, projectId: string, worklogId: string) {
+		// verify user active
+		const { data: user, error: userErr } = await this.supabase
+			.from('users')
+			.select('id,is_active')
+			.eq('id', userId)
+			.maybeSingle();
+		if (userErr) {
+			throw new BadRequestException(`Gagal memverifikasi pengguna: ${userErr.message}`);
+		}
+		if (!user || (user as any).is_active === false) {
+			throw new BadRequestException('Akun Anda tidak aktif');
+		}
+
+		// ownership check
+		const project = await this.repo.getByIdForUser(userId, projectId);
+		if (!project) {
+			throw new BadRequestException('Project tidak ditemukan atau tidak dapat diakses');
+		}
+
+		// ensure worklog exists under project and not deleted
+		const current = await this.repo.getWorklogByIdForProject(projectId, worklogId);
+		if (!current) {
+			throw new BadRequestException('Worklog tidak ditemukan');
+		}
+
+		// soft delete
+		await this.repo.softDeleteWorklog(projectId, worklogId);
+
+		// audit log (opsional)
+		await this.auditLogger.log({
+			userId,
+			action: 'DELETE_WORKLOG',
+			entityType: 'worklog',
+			entityId: worklogId,
+		});
+	}
 }
 
 

@@ -33,6 +33,20 @@ export class ProjectController {
 		};
 	}
 
+	@Delete(':projectId/worklogs/:id')
+	async deleteWorklog(
+		@Req() req: Request,
+		@Param('projectId', new ParseUUIDPipe({ version: '4' })) projectId: string,
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	) {
+		const auth = (req as any).user as { id: string };
+		await this.projectService.deleteWorklog(auth.id, projectId, id);
+		return {
+			success: true,
+			message: 'Berhasil menghapus worklog',
+		};
+	}
+
 	@Get()
 	async list(@Req() req: Request, @Query() query: GetProjectsQueryDto) {
 		const auth = (req as any).user as { id: string };

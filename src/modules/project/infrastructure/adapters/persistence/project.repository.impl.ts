@@ -279,6 +279,21 @@ export class ProjectRepositoryImpl {
 		};
 	}
 
+	async softDeleteWorklog(project_id: string, worklog_id: string) {
+		const { data, error } = await this.supabase
+			.from('worklogs')
+			.update({ deleted_at: new Date().toISOString() })
+			.eq('id', worklog_id)
+			.eq('project_id', project_id)
+			.is('deleted_at', null)
+			.select('id,deleted_at')
+			.single();
+		if (error) {
+			throw new InternalServerErrorException(`Gagal menghapus worklog: ${error.message}`);
+		}
+		return data as { id: string; deleted_at: string };
+	}
+
 	async listProjects(params: {
 		user_id: string;
 		status?: 'ACTIVE' | 'ARCHIVED';
