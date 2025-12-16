@@ -54,7 +54,19 @@ export class AuthService {
       type: 'refresh',
     } as any);
 
-    return { accessToken, refreshToken };
+    const role = user.role_id ? await this.userRepo.getRoleById(user.role_id) : null;
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.full_name ?? null,
+        roleName: role?.name ?? null,
+        createdAt: (user as any).created_at ?? null,
+      },
+    };
   }
 
   async login(email: string, password: string) {

@@ -15,7 +15,7 @@ export class AuthController {
 
   @Post('register')
   async register(@Body() body: RegisterRequestDto) {
-    const { accessToken, refreshToken } = await this.authService.register(
+    const { accessToken, refreshToken, user } = await this.authService.register(
       body.email,
       body.password,
       body.full_name,
@@ -25,6 +25,11 @@ export class AuthController {
       message: 'Registrasi berhasil.',
       access_token: accessToken,
       refresh_token: refreshToken,
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.roleName,
+      createdAt: user.createdAt,
     };
   }
 
