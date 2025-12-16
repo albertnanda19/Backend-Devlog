@@ -36,6 +36,21 @@ export class ProjectsAdminController {
 			data: archived,
 		};
 	}
+
+	@UseGuards(AdminGuard)
+	@Post('projects/:id/restore')
+	async restore(
+		@Req() req: Request,
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	) {
+		const actor = (req as any).user as { id: string };
+		const restored = await this.projectService.adminRestoreProject(actor.id, id);
+		return {
+			success: true,
+			message: 'Project restored successfully',
+			data: restored,
+		};
+	}
 }
 
 

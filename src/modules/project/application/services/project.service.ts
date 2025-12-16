@@ -114,6 +114,31 @@ export class ProjectService {
 		};
 	}
 
+	async adminRestoreProject(actorUserId: string, projectId: string) {
+		const project = await this.repo.getProjectById(projectId);
+		if (!project) {
+			throw new BadRequestException('Project tidak ditemukan');
+		}
+		if (project.status !== 'ARCHIVED') {
+			throw new BadRequestException('Project tidak berstatus ARCHIVED');
+		}
+
+		const updated = await this.repo.adminUpdateProjectStatus(projectId, 'ACTIVE');
+
+		await this.auditLogger.log({
+			userId: actorUserId,
+			action: 'RESTORE_PROJECT',
+			entityType: 'project',
+			entityId: projectId,
+		});
+
+		return {
+			id: updated.id,
+			status: updated.status,
+			restoredAt: updated.updated_at,
+		};
+	}
+
 	async listProjects(userId: string, query: GetProjectsQueryDto) {
 		const page = query.page ?? 1;
 		const limit = query.limit ?? 10;

@@ -30,7 +30,7 @@ export class GetAuditLogsQueryDto {
 
 	@IsOptional()
 	@IsString({ message: 'action harus berupa teks.' })
-	@IsIn(['UPDATE_USER_ROLE', 'DELETE_PROJECT', 'CREATE_WORKLOG', 'UPDATE_WORKLOG', 'DELETE_WORKLOG', 'CREATE_PROJECT', 'UPDATE_PROJECT', 'DELETE_USER', 'ARCHIVE_PROJECT'], { message: 'action tidak valid.' })
+	@IsIn(['UPDATE_USER_ROLE', 'DELETE_PROJECT', 'CREATE_WORKLOG', 'UPDATE_WORKLOG', 'DELETE_WORKLOG', 'CREATE_PROJECT', 'UPDATE_PROJECT', 'DELETE_USER', 'ARCHIVE_PROJECT', 'RESTORE_PROJECT'], { message: 'action tidak valid.' })
 	action?: string;
 
 	@IsOptional()
