@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { GetAdminUsersQueryDto } from '../../infrastructure/adapters/http/dto/get-admin-users-query.dto';
+import { GetAdminUserDetailQueryDto } from '../../infrastructure/adapters/http/dto/get-admin-user-detail-query.dto';
 
 @Injectable()
 export class UsersService {
@@ -81,6 +82,46 @@ export class UsersService {
 			total,
 			page,
 			limit,
+		};
+	}
+
+	async getUserDetail(userId: string, query: GetAdminUserDetailQueryDto) {
+		const user = await this.repo.getUserById(userId);
+		if (!user) {
+			throw new BadRequestException('Pengguna tidak ditemukan');
+		}
+		const role = user.role_id ? await this.repo.getRoleById(user.role_id) : null;
+
+		const includeStats = query.includeStats ?? false;
+		const includeProjects = query.includeProjects ?? false;
+		const projectLimit = Math.min(query.projectLimit ?? 5, 20);
+
+		let stats: any | undefined;
+		if (includeStats) {
+			stats = await this.repo.getUserStats(userId);
+		}
+
+		let projects: any[] | undefined;
+		if (includeProjects) {
+			const rows = await this.repo.listUserProjects(userId, projectLimit);
+			projects = rows.map((p: any) => ({
+				id: p.id,
+				title: p.title,
+				status: p.status,
+				createdAt: p.created_at,
+			}));
+		}
+
+		return {
+			id: user.id,
+			email: user.email,
+			fullName: user.full_name ?? null,
+			role: role ? { id: role.id, name: role.name } : null,
+			isActive: user.is_active,
+			createdAt: user.created_at,
+			updatedAt: user.updated_at,
+			stats,
+			projects,
 		};
 	}
 }

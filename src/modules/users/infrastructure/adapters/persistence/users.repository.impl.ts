@@ -42,6 +42,74 @@ export class UsersRepositoryImpl {
 			total: count ?? 0,
 		};
 	}
+
+	async getUserById(userId: string) {
+		const { data, error } = await this.supabase
+			.from('users')
+			.select('id,email,full_name,role_id,is_active,created_at,updated_at')
+			.eq('id', userId)
+			.maybeSingle();
+		if (error) {
+			throw new InternalServerErrorException(`Gagal mengambil pengguna: ${error.message}`);
+		}
+		return data as any | null;
+	}
+
+	async getRoleById(roleId: string) {
+		const { data, error } = await this.supabase
+			.from('roles')
+			.select('id,name')
+			.eq('id', roleId)
+			.maybeSingle();
+		if (error) {
+			throw new InternalServerErrorException(`Gagal mengambil role: ${error.message}`);
+		}
+		return data as any | null;
+	}
+
+	async getUserStats(userId: string) {
+		// totalProjects
+		const { count: totalProjects, error: projErr, data: projData } = await this.supabase
+			.from('projects')
+			.select('id', { count: 'exact' })
+			.eq('user_id', userId)
+			.is('deleted_at', null);
+		if (projErr) {
+			throw new InternalServerErrorException(`Gagal menghitung proyek: ${projErr.message}`);
+		}
+		const projectIds = (projData ?? []).map((p: any) => p.id);
+
+		let totalWorklogs = 0;
+		let totalTimeSpent = 0;
+		if (projectIds.length > 0) {
+			const { data: worklogs, error: wlErr } = await this.supabase
+				.from('worklogs')
+				.select('time_spent', { count: 'exact' })
+				.in('project_id', projectIds)
+				.is('deleted_at', null);
+			if (wlErr) {
+				throw new InternalServerErrorException(`Gagal menghitung worklog: ${wlErr.message}`);
+			}
+			totalWorklogs = (worklogs as any)?.length ?? 0;
+			totalTimeSpent = (worklogs ?? []).reduce((sum: number, w: any) => sum + (w.time_spent ?? 0), 0);
+		}
+
+		return { totalProjects: totalProjects ?? 0, totalWorklogs, totalTimeSpent };
+	}
+
+	async listUserProjects(userId: string, limit: number) {
+		const { data, error } = await this.supabase
+			.from('projects')
+			.select('id,title,status,created_at')
+			.eq('user_id', userId)
+			.is('deleted_at', null)
+			.order('created_at', { ascending: false })
+			.limit(limit);
+		if (error) {
+			throw new InternalServerErrorException(`Gagal mengambil proyek pengguna: ${error.message}`);
+		}
+		return (data ?? []) as Array<{ id: string; title: string; status: string; created_at: string }>;
+	}
 }
 
  
