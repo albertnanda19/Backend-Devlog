@@ -283,6 +283,31 @@ export class ProjectService {
 			},
 		};
 	}
+
+	async getWorklogDetail(userId: string, projectId: string, worklogId: string) {
+		// Ownership check
+		const project = await this.repo.getByIdForUser(userId, projectId);
+		if (!project) {
+			throw new BadRequestException('Project tidak ditemukan atau tidak dapat diakses');
+		}
+
+		const wl = await this.repo.getWorklogByIdForProject(projectId, worklogId);
+		if (!wl) {
+			throw new BadRequestException('Worklog tidak ditemukan');
+		}
+
+		return {
+			id: wl.id,
+			project: { id: project.id, title: project.title },
+			logDate: wl.log_date,
+			activityType: wl.activity_type,
+			summary: wl.summary,
+			timeSpent: wl.time_spent,
+			blockers: wl.blockers,
+			createdAt: wl.created_at,
+			updatedAt: wl.updated_at,
+		};
+	}
 }
 
 

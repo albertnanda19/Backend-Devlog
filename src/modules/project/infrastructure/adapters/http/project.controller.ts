@@ -136,6 +136,7 @@ export class ProjectController {
 		const result = await this.projectService.listWorklogs(auth.id, projectId, query);
 		return {
 			success: true,
+			message: 'Berhasil mengambil worklog',
 			data: result.items.map((w: any) => ({
 				id: w.id,
 				logDate: w.log_date,
@@ -146,6 +147,21 @@ export class ProjectController {
 				createdAt: w.created_at,
 			})),
 			meta: result.meta,
+		};
+	}
+
+	@Get(':projectId/worklogs/:id')
+	async getWorklogDetail(
+		@Req() req: Request,
+		@Param('projectId', new ParseUUIDPipe({ version: '4' })) projectId: string,
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	) {
+		const auth = (req as any).user as { id: string };
+		const detail = await this.projectService.getWorklogDetail(auth.id, projectId, id);
+		return {
+			success: true,
+			message: 'Berhasil mengambil worklog',
+			data: detail,
 		};
 	}
 }

@@ -6,6 +6,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { SupabaseModule } from './infrastructure/supabase.module';
 import { ProjectModule } from './modules/project/project.module';
 import { AuditLoggerModule } from './infrastructure/logger/audit-logger.module';
+import { WorklogModule } from './modules/worklog/worklog.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { AuditLoggerModule } from './infrastructure/logger/audit-logger.module';
     AuditLoggerModule,
     AuthModule,
     ProjectModule,
+    WorklogModule,
   ],
   controllers: [AppController],
   providers: [AppService],

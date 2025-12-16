@@ -214,6 +214,20 @@ export class ProjectRepositoryImpl {
 		};
 	}
 
+	async getWorklogByIdForProject(project_id: string, worklog_id: string) {
+		const { data, error } = await this.supabase
+			.from('worklogs')
+			.select('id,project_id,log_date,activity_type,summary,time_spent,blockers,created_at,updated_at,deleted_at')
+			.eq('id', worklog_id)
+			.eq('project_id', project_id)
+			.is('deleted_at', null)
+			.maybeSingle();
+		if (error) {
+			throw new InternalServerErrorException(`Gagal mengambil worklog: ${error.message}`);
+		}
+		return data as any | null;
+	}
+
 	async listProjects(params: {
 		user_id: string;
 		status?: 'ACTIVE' | 'ARCHIVED';
