@@ -127,4 +127,17 @@ export class AuthRepositoryImpl implements AuthRepository, UserRepositoryPort {
 		}
 		return data as UserRecord;
 	}
+
+	async getRoleById(roleId: string): Promise<{ id: string; name: string } | null> {
+		const { data, error } = await this.supabase
+			.from('roles')
+			.select('id,name')
+			.eq('id', roleId)
+			.maybeSingle();
+		if (error) {
+			throw new InternalServerErrorException('Gagal mengambil data role');
+		}
+		if (!data) return null;
+		return { id: (data as any).id, name: (data as any).name };
+	}
 }

@@ -30,7 +30,7 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() body: LoginRequestDto) {
-    const { accessToken, refreshToken } = await this.authService.login(
+    const { accessToken, refreshToken, roleName } = await this.authService.login(
       body.email,
       body.password,
     );
@@ -39,6 +39,7 @@ export class AuthController {
       message: 'Login berhasil.',
       access_token: accessToken,
       refresh_token: refreshToken,
+      role: roleName,
     };
   }
 

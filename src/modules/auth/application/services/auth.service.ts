@@ -80,7 +80,8 @@ export class AuthService {
       sub: user.id,
       type: 'refresh',
     } as any);
-    return { accessToken, refreshToken };
+    const role = user.role_id ? await this.userRepo.getRoleById(user.role_id) : null;
+    return { accessToken, refreshToken, roleName: role?.name ?? null };
   }
 
   async updateMe(userId: string, full_name: string) {
