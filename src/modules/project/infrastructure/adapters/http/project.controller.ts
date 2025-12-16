@@ -7,6 +7,7 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 import { GetProjectDetailQueryDto } from './dto/get-project-detail-query.dto';
 import { CreateWorklogDto } from './dto/create-worklog.dto';
 import { GetWorklogsQueryDto } from './dto/get-worklogs-query.dto';
+import { UpdateWorklogDto } from './dto/update-worklog.dto';
 
 @Controller('projects')
 export class ProjectController {
@@ -162,6 +163,30 @@ export class ProjectController {
 			success: true,
 			message: 'Berhasil mengambil worklog',
 			data: detail,
+		};
+	}
+
+	@Put(':projectId/worklogs/:id')
+	async updateWorklog(
+		@Req() req: Request,
+		@Param('projectId', new ParseUUIDPipe({ version: '4' })) projectId: string,
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: UpdateWorklogDto,
+	) {
+		const auth = (req as any).user as { id: string };
+		const updated = await this.projectService.updateWorklog(auth.id, projectId, id, body);
+		return {
+			success: true,
+			message: 'Berhasil mengupdate worklog',
+			data: {
+				id: updated.id,
+				logDate: updated.log_date,
+				activityType: updated.activity_type,
+				summary: updated.summary,
+				timeSpent: updated.time_spent,
+				blockers: updated.blockers,
+				updatedAt: updated.updated_at,
+			},
 		};
 	}
 }

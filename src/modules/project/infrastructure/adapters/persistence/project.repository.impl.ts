@@ -228,6 +228,57 @@ export class ProjectRepositoryImpl {
 		return data as any | null;
 	}
 
+	async existsOtherWorklogOnDate(project_id: string, log_date: string, exclude_worklog_id: string): Promise<boolean> {
+		const { data, error } = await this.supabase
+			.from('worklogs')
+			.select('id')
+			.eq('project_id', project_id)
+			.eq('log_date', log_date)
+			.neq('id', exclude_worklog_id)
+			.is('deleted_at', null)
+			.maybeSingle();
+		if (error && error.code !== 'PGRST116') {
+			throw new InternalServerErrorException(`Gagal memeriksa worklog: ${error.message}`);
+		}
+		return !!data;
+	}
+
+	async updateWorklog(project_id: string, worklog_id: string, updates: {
+		log_date?: string;
+		activity_type?: string;
+		summary?: string;
+		time_spent?: number | null;
+		blockers?: string | null;
+	}) {
+		const payload: Record<string, unknown> = {};
+		if (typeof updates.log_date !== 'undefined') payload.log_date = updates.log_date;
+		if (typeof updates.activity_type !== 'undefined') payload.activity_type = updates.activity_type;
+		if (typeof updates.summary !== 'undefined') payload.summary = updates.summary;
+		if (typeof updates.time_spent !== 'undefined') payload.time_spent = updates.time_spent;
+		if (typeof updates.blockers !== 'undefined') payload.blockers = updates.blockers;
+
+		const { data, error } = await this.supabase
+			.from('worklogs')
+			.update(payload)
+			.eq('id', worklog_id)
+			.eq('project_id', project_id)
+			.is('deleted_at', null)
+			.select('id,log_date,activity_type,summary,time_spent,blockers,updated_at')
+			.single();
+		if (error) {
+			throw new InternalServerErrorException(`Gagal memperbarui worklog: ${error.message}`);
+		}
+		return data as {
+			id: string;
+			log_date: string;
+			activity_type: string;
+			summary: string;
+			time_spent: number | null;
+			blockers: string | null;
+			updated_at: string;
+		};
+	}
+
 	async listProjects(params: {
 		user_id: string;
 		status?: 'ACTIVE' | 'ARCHIVED';

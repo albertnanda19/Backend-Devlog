@@ -7,6 +7,7 @@ import { GetProjectDetailQueryDto } from '../../infrastructure/adapters/http/dto
 import { AuditLoggerService } from '../../../../infrastructure/logger/audit-logger.service';
 import { CreateWorklogDto } from '../../infrastructure/adapters/http/dto/create-worklog.dto';
 import { GetWorklogsQueryDto } from '../../infrastructure/adapters/http/dto/get-worklogs-query.dto';
+import { UpdateWorklogDto } from '../../infrastructure/adapters/http/dto/update-worklog.dto';
 
 @Injectable()
 export class ProjectService {
@@ -307,6 +308,59 @@ export class ProjectService {
 			createdAt: wl.created_at,
 			updatedAt: wl.updated_at,
 		};
+	}
+
+	async updateWorklog(userId: string, projectId: string, worklogId: string, dto: UpdateWorklogDto) {
+		// verify project ownership and not deleted
+		const project = await this.repo.getByIdForUser(userId, projectId);
+		if (!project) {
+			throw new BadRequestException('Project tidak ditemukan atau tidak dapat diakses');
+		}
+
+		// verify worklog exists under project and not deleted
+		const current = await this.repo.getWorklogByIdForProject(projectId, worklogId);
+		if (!current) {
+			throw new BadRequestException('Worklog tidak ditemukan');
+		}
+
+		// ensure at least one field provided
+		const provided =
+			typeof dto.logDate !== 'undefined' ||
+			typeof dto.activityType !== 'undefined' ||
+			typeof dto.summary !== 'undefined' ||
+			typeof dto.timeSpent !== 'undefined' ||
+			typeof dto.blockers !== 'undefined';
+		if (!provided) {
+			throw new BadRequestException('Minimal satu field harus dikirim');
+		}
+
+		// validate logDate if provided
+		if (typeof dto.logDate !== 'undefined') {
+			const today = new Date(); today.setHours(0, 0, 0, 0);
+			const inputDate = new Date(dto.logDate + 'T00:00:00.000Z');
+			if (isNaN(inputDate.getTime())) {
+				throw new BadRequestException('Format tanggal tidak valid.');
+			}
+			if (inputDate.getTime() > today.getTime()) {
+				throw new BadRequestException('Tanggal worklog tidak boleh melebihi hari ini.');
+			}
+			// prevent duplicate (excluding current worklog)
+			const dup = await this.repo.existsOtherWorklogOnDate(projectId, dto.logDate, worklogId);
+			if (dup) {
+				throw new BadRequestException('Worklog untuk tanggal tersebut sudah ada.');
+			}
+		}
+
+		// update
+		const updated = await this.repo.updateWorklog(projectId, worklogId, {
+			log_date: dto.logDate,
+			activity_type: dto.activityType,
+			summary: dto.summary,
+			time_spent: typeof dto.timeSpent === 'number' ? dto.timeSpent : undefined,
+			blockers: typeof dto.blockers === 'string' ? dto.blockers : undefined,
+		});
+
+		return updated;
 	}
 }
 
