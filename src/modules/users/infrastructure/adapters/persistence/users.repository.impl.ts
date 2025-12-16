@@ -110,6 +110,19 @@ export class UsersRepositoryImpl {
 		}
 		return (data ?? []) as Array<{ id: string; title: string; status: string; created_at: string }>;
 	}
+
+	async updateUserStatus(userId: string, isActive: boolean) {
+		const { data, error } = await this.supabase
+			.from('users')
+			.update({ is_active: isActive })
+			.eq('id', userId)
+			.select('id,email,is_active,updated_at')
+			.single();
+		if (error) {
+			throw new InternalServerErrorException(`Gagal memperbarui status pengguna: ${error.message}`);
+		}
+		return data as { id: string; email: string; is_active: boolean; updated_at: string };
+	}
 }
 
  

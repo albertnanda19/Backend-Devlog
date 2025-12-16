@@ -1,8 +1,10 @@
-import { Controller, Get, Param, ParseUUIDPipe, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { UsersService } from '../../../application/services/users.service';
 import { GetAdminUsersQueryDto } from './dto/get-admin-users-query.dto';
 import { AdminGuard } from '../../guards/admin.guard';
 import { GetAdminUserDetailQueryDto } from './dto/get-admin-user-detail-query.dto';
+import { UpdateAdminUserStatusDto } from './dto/update-admin-user-status.dto';
+import type { Request } from 'express';
 
 @Controller('admin')
 export class AdminController {
@@ -36,6 +38,22 @@ export class AdminController {
 			success: true,
 			message: 'Berhasil mengambil detail pengguna',
 			data,
+		};
+	}
+
+	@UseGuards(AdminGuard)
+	@Put('users/:id')
+	async updateStatus(
+		@Req() req: Request,
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: UpdateAdminUserStatusDto,
+	) {
+		const actor = (req as any).user as { id: string };
+		const updated = await this.usersService.updateUserStatus(actor.id, id, body);
+		return {
+			success: true,
+			message: 'Berhasil mengupdate user',
+			data: updated,
 		};
 	}
 }

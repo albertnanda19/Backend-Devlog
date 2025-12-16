@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { GetAdminUsersQueryDto } from '../../infrastructure/adapters/http/dto/get-admin-users-query.dto';
 import { GetAdminUserDetailQueryDto } from '../../infrastructure/adapters/http/dto/get-admin-user-detail-query.dto';
+import { UpdateAdminUserStatusDto } from '../../infrastructure/adapters/http/dto/update-admin-user-status.dto';
 
 @Injectable()
 export class UsersService {
@@ -122,6 +123,43 @@ export class UsersService {
 			updatedAt: user.updated_at,
 			stats,
 			projects,
+		};
+	}
+
+	async updateUserStatus(actorUserId: string, targetUserId: string, dto: UpdateAdminUserStatusDto) {
+		// minimal satu field
+		const provided = typeof dto.isActive !== 'undefined';
+		if (!provided) {
+			throw new BadRequestException('Minimal satu field harus dikirim');
+		}
+
+		// target must exist
+		const target = await this.repo.getUserById(targetUserId);
+		if (!target) {
+			throw new BadRequestException('Pengguna tidak ditemukan');
+		}
+
+		// admin cannot deactivate self
+		if (actorUserId === targetUserId && dto.isActive === false) {
+			throw new BadRequestException('Anda tidak dapat menonaktifkan akun Anda sendiri');
+		}
+
+		// target is not super admin (jika ada)
+		if (target.role_id) {
+			const role = await this.repo.getRoleById(target.role_id);
+			if (role?.name === 'SUPERADMIN') {
+				throw new BadRequestException('Anda tidak dapat mengubah status super admin');
+			}
+		}
+
+		// perform update
+		const updated = await this.repo.updateUserStatus(targetUserId, dto.isActive as boolean);
+
+		return {
+			id: updated.id,
+			email: updated.email,
+			isActive: updated.is_active,
+			updatedAt: updated.updated_at,
 		};
 	}
 }
