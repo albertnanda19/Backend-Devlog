@@ -8,6 +8,7 @@ import { ProjectModule } from './modules/project/project.module';
 import { AuditLoggerModule } from './infrastructure/logger/audit-logger.module';
 import { WorklogModule } from './modules/worklog/worklog.module';
 import { UsersModule } from './modules/users/users.module';
+import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { UsersModule } from './modules/users/users.module';
     ProjectModule,
     WorklogModule,
     UsersModule,
+    AuditLogsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
