@@ -43,6 +43,31 @@ export class ProjectService {
 		return created;
 	}
 
+	async adminArchiveProject(actorUserId: string, projectId: string, reason?: string) {
+		const project = await this.repo.getProjectById(projectId);
+		if (!project) {
+			throw new BadRequestException('Project tidak ditemukan');
+		}
+		if (project.status === 'ARCHIVED') {
+			throw new BadRequestException('Project sudah berstatus ARCHIVED');
+		}
+
+		const updated = await this.repo.adminUpdateProjectStatus(projectId, 'ARCHIVED');
+
+		await this.auditLogger.log({
+			userId: actorUserId,
+			action: 'ARCHIVE_PROJECT',
+			entityType: 'project',
+			entityId: projectId,
+		});
+
+		return {
+			id: updated.id,
+			status: updated.status,
+			archivedAt: updated.updated_at,
+		};
+	}
+
 	async adminListProjects(query: GetAdminProjectsQueryDto) {
 		const page = query.page ?? 1;
 		const limit = query.limit ?? 20;

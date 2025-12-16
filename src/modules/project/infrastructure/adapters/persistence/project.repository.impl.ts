@@ -97,6 +97,31 @@ export class ProjectRepositoryImpl {
 		}
 		return (data ?? []) as Array<{ id: string; email: string }>;
 	}
+
+	async getProjectById(project_id: string) {
+		const { data, error } = await this.supabase
+			.from('projects')
+			.select('id,status,created_at,updated_at,deleted_at')
+			.eq('id', project_id)
+			.maybeSingle();
+		if (error) {
+			throw new InternalServerErrorException(`Gagal mengambil project: ${error.message}`);
+		}
+		return data as any | null;
+	}
+
+	async adminUpdateProjectStatus(project_id: string, status: 'ACTIVE' | 'ARCHIVED') {
+		const { data, error } = await this.supabase
+			.from('projects')
+			.update({ status })
+			.eq('id', project_id)
+			.select('id,status,updated_at')
+			.single();
+		if (error) {
+			throw new InternalServerErrorException(`Gagal memperbarui status project: ${error.message}`);
+		}
+		return data as { id: string; status: 'ACTIVE' | 'ARCHIVED'; updated_at: string };
+	}
 	async getByIdForUser(user_id: string, project_id: string) {
 		const { data, error } = await this.supabase
 			.from('projects')
