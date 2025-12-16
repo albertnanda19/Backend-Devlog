@@ -14,16 +14,7 @@ import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: (() => {
-        const ev = process.env.NODE_ENV
-          ? process.env.NODE_ENV
-          : process.env.npm_lifecycle_event === 'start:dev'
-            ? 'development'
-            : process.env.npm_lifecycle_event === 'start:prod'
-              ? 'production'
-              : undefined;
-        return ev ? [`.env.${ev}.local`] : [];
-      })(),
+      envFilePath: '.env',
     }),
     SupabaseModule,
     AuditLoggerModule,
