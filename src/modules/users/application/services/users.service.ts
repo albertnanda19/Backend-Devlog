@@ -3,12 +3,15 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { GetAdminUsersQueryDto } from '../../infrastructure/adapters/http/dto/get-admin-users-query.dto';
 import { GetAdminUserDetailQueryDto } from '../../infrastructure/adapters/http/dto/get-admin-user-detail-query.dto';
 import { UpdateAdminUserStatusDto } from '../../infrastructure/adapters/http/dto/update-admin-user-status.dto';
+import { UpdateAdminUserRoleDto } from '../../infrastructure/adapters/http/dto/update-admin-user-role.dto';
+import { AuditLoggerService } from '../../../../infrastructure/logger/audit-logger.service';
 
 @Injectable()
 export class UsersService {
 	constructor(
 		@Inject('SUPABASE_CLIENT') private readonly supabase: SupabaseClient,
 		@Inject('UsersRepositoryToken') private readonly repo: any,
+		private readonly auditLogger: AuditLoggerService,
 	) {}
 
 	async listUsers(query: GetAdminUsersQueryDto) {
@@ -83,6 +86,63 @@ export class UsersService {
 			total,
 			page,
 			limit,
+		};
+	}
+
+	async updateUserRole(actorUserId: string, targetUserId: string, dto: UpdateAdminUserRoleDto) {
+		// roleId required is enforced by DTO, but double-check
+		if (!dto.roleId) {
+			throw new BadRequestException('roleId wajib diisi');
+		}
+
+		// target must exist
+		const target = await this.repo.getUserById(targetUserId);
+		if (!target) {
+			throw new BadRequestException('Pengguna tidak ditemukan');
+		}
+
+		// self change is not allowed
+		if (actorUserId === targetUserId) {
+			throw new BadRequestException('Anda tidak dapat mengubah peran akun Anda sendiri');
+		}
+
+		// new role must exist
+		const newRole = await this.repo.getRoleById(dto.roleId);
+		if (!newRole) {
+			throw new BadRequestException('Role tidak ditemukan');
+		}
+
+		// cannot downgrade super admin
+		if (target.role_id) {
+			const currentRole = await this.repo.getRoleById(target.role_id);
+			if (currentRole?.name === 'SUPERADMIN' && target.role_id !== dto.roleId) {
+				throw new BadRequestException('Anda tidak dapat mengubah peran super admin');
+			}
+		}
+
+		// new role must be different from current
+		if (target.role_id === dto.roleId) {
+			throw new BadRequestException('Peran baru sama dengan peran saat ini');
+		}
+
+		const updated = await this.repo.updateUserRole(targetUserId, dto.roleId);
+
+		// audit log
+		await this.auditLogger.log({
+			userId: actorUserId,
+			action: 'UPDATE_USER_ROLE',
+			entityType: 'user',
+			entityId: targetUserId,
+		});
+
+		return {
+			id: updated.id,
+			email: updated.email,
+			role: {
+				id: newRole.id,
+				name: newRole.name,
+			},
+			updatedAt: updated.updated_at,
 		};
 	}
 

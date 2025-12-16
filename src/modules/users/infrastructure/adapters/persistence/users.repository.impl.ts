@@ -123,6 +123,19 @@ export class UsersRepositoryImpl {
 		}
 		return data as { id: string; email: string; is_active: boolean; updated_at: string };
 	}
+
+	async updateUserRole(userId: string, roleId: string) {
+		const { data, error } = await this.supabase
+			.from('users')
+			.update({ role_id: roleId })
+			.eq('id', userId)
+			.select('id,email,role_id,updated_at')
+			.single();
+		if (error) {
+			throw new InternalServerErrorException(`Gagal memperbarui peran pengguna: ${error.message}`);
+		}
+		return data as { id: string; email: string; role_id: string; updated_at: string };
+	}
 }
 
  

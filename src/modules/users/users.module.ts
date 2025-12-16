@@ -5,10 +5,11 @@ import { UsersService } from './application/services/users.service';
 import { SupabaseModule } from '../../infrastructure/supabase.module';
 import { AccessTokenMiddleware } from '../../middleware/access-token.middleware';
 import { AdminGuard } from './infrastructure/guards/admin.guard';
+import { RolesController } from './infrastructure/adapters/http/roles.controller';
 
 @Module({
   imports: [SupabaseModule],
-  controllers: [AdminController],
+  controllers: [AdminController, RolesController],
   providers: [
     UsersRepositoryImpl,
     {

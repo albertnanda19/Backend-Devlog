@@ -5,6 +5,7 @@ import { AdminGuard } from '../../guards/admin.guard';
 import { GetAdminUserDetailQueryDto } from './dto/get-admin-user-detail-query.dto';
 import { UpdateAdminUserStatusDto } from './dto/update-admin-user-status.dto';
 import type { Request } from 'express';
+import { UpdateAdminUserRoleDto } from './dto/update-admin-user-role.dto';
 
 @Controller('admin')
 export class AdminController {
@@ -53,6 +54,22 @@ export class AdminController {
 		return {
 			success: true,
 			message: 'Berhasil mengupdate user',
+			data: updated,
+		};
+	}
+
+	@UseGuards(AdminGuard)
+	@Put('users/:id/role')
+	async updateRole(
+		@Req() req: Request,
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: UpdateAdminUserRoleDto,
+	) {
+		const actor = (req as any).user as { id: string };
+		const updated = await this.usersService.updateUserRole(actor.id, id, body);
+		return {
+			success: true,
+			message: 'Berhasil mengubah peran pengguna',
 			data: updated,
 		};
 	}
